@@ -105,5 +105,5 @@ gcloud secrets add-iam-policy-binding needham-circle-smtp \
   --member=serviceAccount:CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
   --role=roles/secretmanager.secretAccessor
 ``` After deploying, put the three function URLs into the main
-repo's `site/_config.yml`. All three scale to zero between requests; at this
+repo's `_config.yml`. All three scale to zero between requests; at this
 site's traffic they stay inside the free tier.
