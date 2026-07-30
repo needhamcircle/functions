@@ -7,7 +7,7 @@ import (
 )
 
 func TestApplyCORSEchoesAllowedOrigins(t *testing.T) {
-	origins := []string{"https://needham-circle.github.io", "http://localhost:4000"}
+	origins := []string{"https://needhamcircle.github.io", "http://localhost:4000"}
 
 	rec := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -29,7 +29,7 @@ func TestApplyCORSIgnoresUnlistedOrigins(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	request.Header.Set("Origin", "https://evil.example")
 
-	applyCORS([]string{"https://needham-circle.github.io"}, rec, request)
+	applyCORS([]string{"https://needhamcircle.github.io"}, rec, request)
 
 	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
 		t.Errorf("Allow-Origin = %q, want none for an unlisted origin", got)

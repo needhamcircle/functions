@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/needham-circle/functions"
+	"github.com/needhamcircle/functions"
 )
 
 func main() {
