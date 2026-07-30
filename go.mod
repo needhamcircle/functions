@@ -1,4 +1,4 @@
-module github.com/needham-circle/functions
+module github.com/needhamcircle/functions
 
 go 1.25.0
 

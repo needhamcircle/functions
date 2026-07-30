@@ -1,7 +1,6 @@
 # Needham Circle functions
 
-The invocation-based Cloud Run functions behind
-[Needham Circle](https://github.com/needham-circle/needham-circle):
+The invocation-based Cloud Run functions behind https://needhamcircle.org.
 the static site calls these from the browser for everything dynamic. Each
 endpoint is its own deployed function; they all share this Go module and are
 selected at deploy time with `--entry-point`.
@@ -23,10 +22,7 @@ selected at deploy time with `--entry-point`.
 - All three answer CORS preflights and stamp CORS headers. The allowlist is
   baked in, nothing to configure: deployed (Cloud Run sets `K_SERVICE`) the
   functions accept https://needhamcircle.org (and www); running locally they
-  accept the local Jekyll site (localhost:4000). Browsers on any other
-  origin — including needham-circle.github.io — can't call them, so the
-  site must be served from the custom domain (or locally) for the dynamic
-  pages to work.
+  accept the local Jekyll site (localhost:4000).
 - `SendContact` also honors `SMTP_ACCOUNT` (default `needhamcircle@gmail.com`).
 
 ## Layout
