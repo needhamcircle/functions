@@ -1,0 +1,6 @@
+# Local environment
+.env
+
+# Binaries and coverage output
+/devserver
+*.out
