@@ -9,17 +9,19 @@ import (
 )
 
 // Shared plumbing for the two form-backed functions (CreateSubmission and
-// SendContact): JSON responses, request decoding, and the validation
-// patterns ported from the Ruby Form fields.
+// SendContact): JSON responses, request decoding, and validation helpers.
 
-// URI::MailTo::EMAIL_REGEXP, ported from the Ruby email fields.
+// The WHATWG HTML5 pattern for <input type="email">, so the browser's native
+// field validation and this server-side check accept exactly the same
+// addresses. It admits no whitespace or control characters, which is what
+// makes a validated address safe to place in a Reply-To header.
 var emailPattern = regexp.MustCompile(
 	"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?" +
 		"(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
 )
 
-// fieldErrors mirrors the Ruby Form's errors hash: field name to messages,
-// serialized as the "errors" object the static forms render inline.
+// fieldErrors maps a field name to its validation messages, serialized as
+// the "errors" object the site's forms render inline.
 type fieldErrors map[string][]string
 
 func (e fieldErrors) add(field, message string) {
@@ -45,8 +47,7 @@ func decodeForm(w http.ResponseWriter, r *http.Request, target any) bool {
 	return true
 }
 
-// tooManyRequests answers a rate-limited request with the same message the
-// Ruby middleware used.
+// tooManyRequests answers a rate-limited request.
 func tooManyRequests(w http.ResponseWriter, retryAfter string) {
 	w.Header().Set("Retry-After", retryAfter)
 	writeJSON(w, http.StatusTooManyRequests, map[string]string{

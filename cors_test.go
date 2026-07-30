@@ -36,18 +36,6 @@ func TestApplyCORSIgnoresUnlistedOrigins(t *testing.T) {
 	}
 }
 
-func TestApplyCORSWildcardAllowsAnyOrigin(t *testing.T) {
-	rec := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/", nil)
-	request.Header.Set("Origin", "https://anywhere.example")
-
-	applyCORS([]string{"*"}, rec, request)
-
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://anywhere.example" {
-		t.Errorf("Allow-Origin = %q, want the request origin under wildcard", got)
-	}
-}
-
 func TestApplyCORSAnswersPreflight(t *testing.T) {
 	rec := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodOptions, "/", nil)

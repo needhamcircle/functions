@@ -149,30 +149,3 @@ func TestHandleRejectsNonGetMethods(t *testing.T) {
 		t.Errorf("status = %d, want 405", rec.Code)
 	}
 }
-
-func TestHandleRequiresTheApiKeyWhenConfigured(t *testing.T) {
-	s := stubServer([]*calendar.Event{timedEvent()}, nil)
-	s.apiKey = "sekrit"
-
-	missing := httptest.NewRecorder()
-	s.handle(missing, httptest.NewRequest(http.MethodGet, "/", nil))
-	if missing.Code != http.StatusUnauthorized {
-		t.Errorf("missing key: status = %d, want 401", missing.Code)
-	}
-
-	wrong := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/", nil)
-	request.Header.Set("X-Api-Key", "guess")
-	s.handle(wrong, request)
-	if wrong.Code != http.StatusUnauthorized {
-		t.Errorf("wrong key: status = %d, want 401", wrong.Code)
-	}
-
-	right := httptest.NewRecorder()
-	request = httptest.NewRequest(http.MethodGet, "/", nil)
-	request.Header.Set("X-Api-Key", "sekrit")
-	s.handle(right, request)
-	if right.Code != http.StatusOK {
-		t.Errorf("right key: status = %d, want 200", right.Code)
-	}
-}

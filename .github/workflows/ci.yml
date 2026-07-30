@@ -14,7 +14,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: gofmt
-        run: test -z "$(gofmt -l .)"
+      - name: go fmt
+        run: |
+          go fmt ./...
+          git diff --exit-code
       - run: go vet ./...
       - run: go test ./...

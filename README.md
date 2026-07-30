@@ -1,29 +1,32 @@
 # Needham Circle functions
 
-The invocation-based Cloud Run functions behind [Needham Circle](https://github.com/needham-circle/needham-circle):
+The invocation-based Cloud Run functions behind
+[Needham Circle](https://github.com/needham-circle/needham-circle):
 the static site calls these from the browser for everything dynamic. Each
 endpoint is its own deployed function; they all share this Go module and are
 selected at deploy time with `--entry-point`.
 
-| Endpoint             | Entry point        | Env vars                                        |
-| -------------------- | ------------------ | ----------------------------------------------- |
-| events data (GET)    | `ListEvents`       | `EVENTS_CALENDAR_ID`, `ALLOWED_ORIGINS`         |
-| event submit (POST)  | `CreateSubmission` | `SUBMISSIONS_CALENDAR_ID`, `ALLOWED_ORIGINS`    |
-| contact form (POST)  | `SendContact`      | `SMTP_PASSWORD` (secret), `ALLOWED_ORIGINS`     |
+| Endpoint             | Entry point        | Env vars                    |
+| -------------------- | ------------------ | --------------------------- |
+| events data (GET)    | `ListEvents`       | `EVENTS_CALENDAR_ID`        |
+| event submit (POST)  | `CreateSubmission` | `SUBMISSIONS_CALENDAR_ID`   |
+| contact form (POST)  | `SendContact`      | `SMTP_PASSWORD` (secret)    |
 
 - `ListEvents` returns upcoming events as JSON (`{"events": [...]}`, with
   Google's own `start`/`end` payloads passed through untouched) and accepts a
-  `q` search parameter — the same query the Sinatra app sent the Calendar
-  API. An optional `EVENTS_API_KEY` (checked against an `X-Api-Key` header)
-  exists for the transition period while the Sinatra app proxies to it; leave
-  it unset once browsers call the function directly.
+  `q` search parameter, passed to the Calendar API.
 - `CreateSubmission` and `SendContact` accept JSON bodies whose field names
-  match the site's form inputs, mirror the Sinatra forms' validation messages
-  (422 with `{"errors": {field: [...]}}`), carry a `website` honeypot field,
-  and rate-limit to 5 requests per minute per IP — per instance, which is why
-  they deploy with `--max-instances=1`.
-- All three answer CORS preflights and stamp CORS headers for the origins in
-  `ALLOWED_ORIGINS` (comma-separated; `*` allows any).
+  match the site's form inputs, return validation failures as 422 with
+  `{"errors": {field: [...]}}` for the forms to render inline, carry a
+  `website` honeypot field, and rate-limit to 5 requests per minute per IP —
+  per instance, which is why they deploy with `--max-instances=1`.
+- All three answer CORS preflights and stamp CORS headers. The allowlist is
+  baked in, nothing to configure: deployed (Cloud Run sets `K_SERVICE`) the
+  functions accept https://needhamcircle.org (and www); running locally they
+  accept the local Jekyll site (localhost:4000). Browsers on any other
+  origin — including needham-circle.github.io — can't call them, so the
+  site must be served from the custom domain (or locally) for the dynamic
+  pages to work.
 - `SendContact` also honors `SMTP_ACCOUNT` (default `needhamcircle@gmail.com`).
 
 ## Layout
@@ -39,13 +42,12 @@ EVENTS_CALENDAR_ID=... \
 SUBMISSIONS_CALENDAR_ID=... \
 SMTP_PASSWORD=... \
 SERVICE_ACCOUNT_KEY=... \
-ALLOWED_ORIGINS=http://localhost:4000 \
 PORT=8081 go run ./cmd/devserver
 ```
 
 Endpoints: `/list-events`, `/create-submission`, `/send-contact` (these paths
-exist only locally — deployed, each function has its own URL). The base64
-`SERVICE_ACCOUNT_KEY` matches the Sinatra app's env var and is only needed
+exist only locally — deployed, each function has its own URL).
+`SERVICE_ACCOUNT_KEY` (base64-encoded service account JSON) is only needed
 locally: deployed, the functions authenticate as their runtime service
 account via Application Default Credentials, so no key ships with them.
 
@@ -77,26 +79,31 @@ gcloud functions deploy needham-circle-events \
   --gen2 --runtime=go125 --region=us-east1 --source=. \
   --entry-point=ListEvents --trigger-http --allow-unauthenticated \
   --service-account=CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
-  --set-env-vars=EVENTS_CALENDAR_ID=...,ALLOWED_ORIGINS=https://needham-circle.github.io
+  --set-env-vars=EVENTS_CALENDAR_ID=...
 
 gcloud functions deploy needham-circle-submit \
   --gen2 --runtime=go125 --region=us-east1 --source=. \
   --entry-point=CreateSubmission --trigger-http --allow-unauthenticated \
   --max-instances=1 \
   --service-account=CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
-  --set-env-vars=SUBMISSIONS_CALENDAR_ID=...,ALLOWED_ORIGINS=https://needham-circle.github.io
+  --set-env-vars=SUBMISSIONS_CALENDAR_ID=...
 
 gcloud functions deploy needham-circle-contact \
   --gen2 --runtime=go125 --region=us-east1 --source=. \
   --entry-point=SendContact --trigger-http --allow-unauthenticated \
   --max-instances=1 \
-  --set-secrets=SMTP_PASSWORD=needham-circle-smtp:latest \
-  --set-env-vars=ALLOWED_ORIGINS=https://needham-circle.github.io
+  --service-account=CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
+  --set-secrets=SMTP_PASSWORD=needham-circle-smtp:latest
 ```
 
-The SMTP app password should live in Secret Manager
-(`gcloud secrets create needham-circle-smtp --data-file=-`) rather than a
-plain env var. After deploying, put the three function URLs into the main
-repo's `site/_config.yml`, and when the custom domain moves to Pages, update
-every function's `ALLOWED_ORIGINS` to the final origin. All three scale to
-zero between requests; at this site's traffic they stay inside the free tier.
+The SMTP app password should live in Secret Manager rather than a plain env
+var, and the runtime service account must be able to read it:
+
+```
+printf '%s' 'the-app-password' | gcloud secrets create needham-circle-smtp --data-file=-
+gcloud secrets add-iam-policy-binding needham-circle-smtp \
+  --member=serviceAccount:CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
+  --role=roles/secretmanager.secretAccessor
+``` After deploying, put the three function URLs into the main
+repo's `site/_config.yml`. All three scale to zero between requests; at this
+site's traffic they stay inside the free tier.

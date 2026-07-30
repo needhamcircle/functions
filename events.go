@@ -1,12 +1,11 @@
-// Package functions holds the invocation-based Cloud Run functions that are
-// taking over the Needham Circle endpoints from the Sinatra server, one at a
-// time. Every function registers its own entry point here; deploys share this
-// module and select one with --entry-point (see README.md).
+// Package functions holds the invocation-based Cloud Run functions behind
+// the Needham Circle site. Every function registers its own entry point
+// here; deploys share this module and select one with --entry-point (see
+// README.md).
 package functions
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -23,15 +22,14 @@ func init() {
 	functions.HTTP("ListEvents", ListEvents)
 }
 
-// maxResults mirrors GoogleCalendar::MAX_RESULTS in the Ruby app; the
-// calendar view drops its trailing month when this cap is hit, so the two
-// sides must agree on it.
+// One page of upcoming events. The site treats a response of exactly this
+// size as truncated (its calendar view drops the trailing month), so the two
+// must agree on the cap.
 const maxResults = 250
 
-// eventJSON is the trimmed event shape the Sinatra app rebuilds into calendar
-// events (see lib/needham_circle/events_function.rb). Start/End pass Google's
-// own dateTime/date payloads through untouched so date semantics — exclusive
-// all-day ends, timezone offsets — stay identical to the direct-API path.
+// eventJSON is the trimmed event shape the site renders. Start/End pass
+// Google's own dateTime/date payloads through untouched so date semantics —
+// exclusive all-day ends, timezone offsets — reach the client intact.
 type eventJSON struct {
 	Title       string                  `json:"title"`
 	Description string                  `json:"description,omitempty"`
@@ -52,20 +50,11 @@ type eventLister func(ctx context.Context, query string) ([]*calendar.Event, err
 
 type server struct {
 	list eventLister
-	// When non-empty, requests must present this value in X-Api-Key. The
-	// events are public either way; the key only keeps third parties from
-	// burning the Calendar API quota through the open function URL.
-	apiKey string
 }
 
 func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if s.apiKey != "" && subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Api-Key")), []byte(s.apiKey)) != 1 {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -124,7 +113,6 @@ var defaultServer = sync.OnceValues(func() (*server, error) {
 	}
 
 	return &server{
-		apiKey: os.Getenv("EVENTS_API_KEY"),
 		list: func(ctx context.Context, query string) ([]*calendar.Event, error) {
 			call := service.Events.List(calendarID).
 				SingleEvents(true).

@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-// rateLimiter ports the Sinatra app's in-memory RateLimit middleware: a
-// sliding window of hit timestamps per client IP, swept periodically so idle
-// IPs don't accumulate. Cloud Run instances don't share memory, so the limit
-// is per-instance — deploy the POST functions with --max-instances=1 (see
-// README.md) to keep it meaningful; that also caps the worst-case bill.
+// rateLimiter is a sliding window of hit timestamps per client IP, swept
+// periodically so idle IPs don't accumulate. Cloud Run instances don't share
+// memory, so the limit is per-instance — deploy the POST functions with
+// --max-instances=1 (see README.md) to keep it meaningful; that also caps
+// the worst-case bill.
 type rateLimiter struct {
 	limit  int
 	period time.Duration
@@ -23,16 +23,17 @@ type rateLimiter struct {
 	lastSweep time.Time
 }
 
-// Mirrors MAX_TRACKED in the Ruby middleware: a hard cap on remembered IPs
-// so a scan across many addresses can't grow the map without bound.
+// A hard cap on remembered IPs so a scan across many addresses can't grow
+// the map without bound.
 const maxTrackedIPs = 10_000
 
 func newRateLimiter(limit int, period time.Duration) *rateLimiter {
 	return &rateLimiter{limit: limit, period: period, now: time.Now, hits: map[string][]time.Time{}}
 }
 
-// allow records a hit for ip and reports whether it is within the limit; a
-// limited request is not recorded, matching the Ruby middleware.
+// allow records a hit for ip and reports whether it is within the limit. A
+// limited request is not recorded, so hammering while blocked doesn't extend
+// the lockout.
 func (l *rateLimiter) allow(ip string) bool {
 	now := l.now()
 	cutoff := now.Add(-l.period)

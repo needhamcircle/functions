@@ -1,10 +1,12 @@
 // Serves every function on one local port for developing the static site
 // against them:
 //
-//	PORT=8081 ALLOWED_ORIGINS=http://localhost:4000 go run ./cmd/devserver
+//	PORT=8081 go run ./cmd/devserver
 //
-// Deployed, each function is its own Cloud Run service; these paths exist
-// only locally, and the site's local config points its endpoints here.
+// Local runs accept the local Jekyll site's origin (localhost:4000, see
+// cors.go), so no CORS configuration is needed. Deployed, each function is
+// its own Cloud Run service; these paths exist only locally, and the site's
+// local config points its endpoints here.
 package main
 
 import (

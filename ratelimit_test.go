@@ -55,7 +55,7 @@ func TestBlockedHitsAreNotRecorded(t *testing.T) {
 
 	limiter.allow("10.0.0.1")
 	// Hammering while blocked must not extend the lockout: the sliding
-	// window is anchored to allowed hits only, matching the Ruby middleware.
+	// window is anchored to allowed hits only.
 	for i := 0; i < 5; i++ {
 		clock.at = clock.at.Add(10 * time.Second)
 		limiter.allow("10.0.0.1")

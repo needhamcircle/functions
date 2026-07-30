@@ -92,7 +92,7 @@ func TestContactSubjectCollapsesWhitespaceAndDefaults(t *testing.T) {
 	}
 }
 
-func TestContactValidationMirrorsTheContactForm(t *testing.T) {
+func TestContactValidationMessages(t *testing.T) {
 	s, _ := stubContactServer(nil)
 
 	rec := postContact(t, s, map[string]string{

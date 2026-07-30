@@ -26,8 +26,8 @@ const (
 
 var whitespaceRuns = regexp.MustCompile(`\s+`)
 
-// contactRequest's field names match the Sinatra ContactForm's param names.
-// Website is the same honeypot the submission form uses.
+// contactRequest's field names match the site form's input names. Website is
+// the same honeypot the submission form uses.
 type contactRequest struct {
 	Name    string `json:"name"`
 	Email   string `json:"email"`
@@ -87,7 +87,8 @@ func (s *contactServer) handle(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-// validateContact ports the ContactForm rules and messages field-for-field.
+// validateContact applies the field rules; the messages render inline under
+// the site form's fields.
 func validateContact(req *contactRequest) fieldErrors {
 	errors := fieldErrors{}
 
@@ -104,9 +105,9 @@ func validateContact(req *contactRequest) fieldErrors {
 	return errors
 }
 
-// subjectFor mirrors the Ruby Mailer: collapse any whitespace (including
-// newlines) in the visitor's subject so it can't smuggle extra headers, fall
-// back to a default when blank, and tag it for the organizers' inbox.
+// subjectFor collapses any whitespace (including newlines) in the visitor's
+// subject so it can't smuggle extra headers, falls back to a default when
+// blank, and tags it for the organizers' inbox.
 func subjectFor(req *contactRequest) string {
 	subject := strings.TrimSpace(whitespaceRuns.ReplaceAllString(req.Subject, " "))
 	if subject == "" {
@@ -116,7 +117,7 @@ func subjectFor(req *contactRequest) string {
 }
 
 // bodyFor keeps every piece of the visitor's free text in the body, never in
-// a header, matching the Ruby Mailer.
+// a header.
 func bodyFor(req *contactRequest) string {
 	return fmt.Sprintf("Name: %s\nEmail: %s\n\n%s\n", req.Name, req.Email, req.Message)
 }
@@ -129,12 +130,13 @@ func bodyFor(req *contactRequest) string {
 // regexp-validated, so it cannot carry header-splitting characters.
 func sendViaGmail(account, password, replyTo, subject, body string) error {
 	var msg strings.Builder
-	msg.WriteString("From: " + account + "\r\n")
-	msg.WriteString("To: " + account + "\r\n")
-	msg.WriteString("Reply-To: " + replyTo + "\r\n")
-	msg.WriteString("Subject: " + mime.QEncoding.Encode("utf-8", subject) + "\r\n")
+	fmt.Fprintf(&msg, "From: %s\r\n", account)
+	fmt.Fprintf(&msg, "To: %s\r\n", account)
+	fmt.Fprintf(&msg, "Reply-To: %s\r\n", replyTo)
+	fmt.Fprintf(&msg, "Subject: %s\r\n", mime.QEncoding.Encode("utf-8", subject))
 	msg.WriteString("MIME-Version: 1.0\r\n")
 	msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+	msg.WriteString("Content-Transfer-Encoding: 8bit\r\n")
 	msg.WriteString("\r\n")
 	msg.WriteString(strings.ReplaceAll(body, "\n", "\r\n"))
 
@@ -157,7 +159,6 @@ var defaultContactServer = sync.OnceValues(func() (*contactServer, error) {
 		send: func(replyTo, subject, body string) error {
 			return sendViaGmail(account, password, replyTo, subject, body)
 		},
-		// The Sinatra app rate-limited POST /contact to 5 per minute per IP.
 		limiter: newRateLimiter(5, time.Minute),
 	}, nil
 })

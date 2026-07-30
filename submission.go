@@ -20,8 +20,8 @@ func init() {
 }
 
 // Submitted times are Needham wall-clock strings from datetime-local inputs
-// ("2006-01-02T15:04"), interpreted in this zone — exactly how the Sinatra
-// app treats them (TZ pin in config.ru, time_zone on the event).
+// ("2006-01-02T15:04"); they are interpreted in this zone and stored on the
+// event with it, regardless of where the function runs.
 const submissionTimeZone = "America/New_York"
 
 var eastern = sync.OnceValue(func() *time.Location {
@@ -33,9 +33,9 @@ var eastern = sync.OnceValue(func() *time.Location {
 	return location
 })
 
-// submissionRequest's field names match the Sinatra EventForm's param names,
-// so the static form serializes its inputs as-is. Website is a honeypot: a
-// hidden input humans never see, so a filled value marks a bot.
+// submissionRequest's field names match the site form's input names, so the
+// form serializes as-is. Website is a honeypot: a hidden input humans never
+// see, so a filled value marks a bot.
 type submissionRequest struct {
 	Title       string `json:"title"`
 	Host        string `json:"host"`
@@ -48,8 +48,8 @@ type submissionRequest struct {
 	Website     string `json:"website"`
 }
 
-// trim mirrors the Ruby string fields' coercion, which strips every value
-// before validating.
+// Every value is stripped before validating, so whitespace-only input fails
+// the required checks.
 func (r *submissionRequest) trim() {
 	r.Title = strings.TrimSpace(r.Title)
 	r.Host = strings.TrimSpace(r.Host)
@@ -106,8 +106,8 @@ func (s *submissionServer) handle(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-// validateSubmission ports the EventForm rules and messages field-for-field,
-// so the static form shows exactly the errors the Sinatra app did.
+// validateSubmission applies the field rules; the messages render inline
+// under the site form's fields.
 func validateSubmission(req *submissionRequest, now time.Time) (fieldErrors, time.Time, time.Time) {
 	errors := fieldErrors{}
 
@@ -144,9 +144,8 @@ func requireString(errors fieldErrors, field, human, value string, required bool
 	}
 }
 
-// timeField parses a datetime-local value in Needham's zone, adding the Ruby
-// TimeField's messages: unparseable/missing values are "required to be a
-// valid time", and both times must be in the future.
+// timeField parses a datetime-local value in Needham's zone; missing or
+// unparseable values and past times are rejected.
 func timeField(errors fieldErrors, field, human, value string, now time.Time) time.Time {
 	parsed, err := time.ParseInLocation("2006-01-02T15:04", value, eastern())
 	if err != nil {
@@ -159,11 +158,11 @@ func timeField(errors fieldErrors, field, human, value string, now time.Time) ti
 	return parsed
 }
 
-// submissionEvent builds the same calendar event the Sinatra app's
-// create_event does: wall-clock times with an explicit zone, the submitter's
-// contact email and host organization in moderator-only private extended
-// properties, and a source block only when there is a URL to link to (Google
-// rejects one with a blank url).
+// submissionEvent builds the calendar event: wall-clock times with an
+// explicit zone, the submitter's contact email and host organization in
+// moderator-only private extended properties (they never surface publicly),
+// and a source block only when there is a URL to link to (Google rejects one
+// with a blank url).
 func submissionEvent(req *submissionRequest, start, end time.Time) *calendar.Event {
 	event := &calendar.Event{
 		Summary:     req.Title,
@@ -199,7 +198,6 @@ var defaultSubmissionServer = sync.OnceValues(func() (*submissionServer, error) 
 			_, err := service.Events.Insert(calendarID, event).Context(ctx).Do()
 			return err
 		},
-		// The Sinatra app rate-limited POST /submit to 5 per minute per IP.
 		limiter: newRateLimiter(5, time.Minute),
 		now:     time.Now,
 	}, nil

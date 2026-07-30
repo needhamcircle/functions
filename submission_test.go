@@ -86,7 +86,7 @@ func TestSubmissionInsertsTheEvent(t *testing.T) {
 	if event.Summary != "Concert on the Green" {
 		t.Errorf("summary = %q", event.Summary)
 	}
-	// Wall-clock time with an explicit zone, exactly like the Sinatra app.
+	// Wall-clock time with an explicit zone.
 	if event.Start.DateTime != "2026-08-01T18:30:00" || event.Start.TimeZone != "America/New_York" {
 		t.Errorf("start = %q %q", event.Start.DateTime, event.Start.TimeZone)
 	}
@@ -115,7 +115,7 @@ func TestSubmissionWithoutURLOmitsTheSourceBlock(t *testing.T) {
 	}
 }
 
-func TestSubmissionValidationMirrorsTheEventForm(t *testing.T) {
+func TestSubmissionValidationMessages(t *testing.T) {
 	s, _ := stubSubmissionServer(nil)
 
 	errs := submissionErrors(t, postSubmission(t, s, map[string]string{

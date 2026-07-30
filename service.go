@@ -16,11 +16,11 @@ import (
 )
 
 // calendarService builds the shared Calendar client once per instance, with
-// the same read-write events scope the Sinatra app uses (ListEvents reads,
-// CreateSubmission writes). Deployed, it authenticates as the runtime service
-// account via Application Default Credentials — no key material ships with
-// the function. The base64 SERVICE_ACCOUNT_KEY fallback matches the Ruby
-// app's env var for local runs outside Google's environment.
+// the read-write events scope (ListEvents reads, CreateSubmission writes).
+// Deployed, it authenticates as the runtime service account via Application
+// Default Credentials — no key material ships with the function. The
+// SERVICE_ACCOUNT_KEY fallback (base64-encoded service account JSON) is for
+// local runs outside Google's environment.
 var calendarService = sync.OnceValues(func() (*calendar.Service, error) {
 	opts := []option.ClientOption{option.WithScopes(calendar.CalendarEventsScope)}
 	if key := os.Getenv("SERVICE_ACCOUNT_KEY"); key != "" {
