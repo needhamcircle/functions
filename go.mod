@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.2
-	google.golang.org/api v0.294.0
+	google.golang.org/api v0.295.0
 )
 
 require (
