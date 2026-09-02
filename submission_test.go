@@ -30,14 +30,25 @@ func validSubmission() map[string]string {
 
 func postSubmission(t *testing.T, s *submissionServer, payload any) *httptest.ResponseRecorder {
 	t.Helper()
+	return postSubmissionFrom(t, s, payload, "")
+}
+
+// postSubmissionFrom submits payload with the client address the deployed
+// frontend conveys as the final X-Forwarded-For entry.
+func postSubmissionFrom(t *testing.T, s *submissionServer, payload any, forwardedFor string) *httptest.ResponseRecorder {
+	t.Helper()
 
 	body, err := json.Marshal(payload)
 	if err != nil {
 		t.Fatalf("marshaling payload: %v", err)
 	}
 
+	request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(body)))
+	if forwardedFor != "" {
+		request.Header.Set("X-Forwarded-For", forwardedFor)
+	}
 	rec := httptest.NewRecorder()
-	s.handle(rec, httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(body))))
+	s.handle(rec, request)
 	return rec
 }
 
@@ -203,14 +214,21 @@ func TestSubmissionRateLimits(t *testing.T) {
 	s, _ := stubSubmissionServer(nil)
 	s.limiter = newRateLimiter(1, time.Minute)
 
-	postSubmission(t, s, validSubmission())
-	rec := postSubmission(t, s, validSubmission())
+	postSubmissionFrom(t, s, validSubmission(), "203.0.113.9")
+	rec := postSubmissionFrom(t, s, validSubmission(), "203.0.113.9")
 
 	if rec.Code != http.StatusTooManyRequests {
 		t.Errorf("status = %d, want 429", rec.Code)
 	}
 	if rec.Header().Get("Retry-After") != "60" {
 		t.Errorf("Retry-After = %q", rec.Header().Get("Retry-After"))
+	}
+
+	// The limit is keyed on the forwarded client address, so one client
+	// hitting it leaves everyone else unaffected.
+	other := postSubmissionFrom(t, s, validSubmission(), "203.0.113.50")
+	if other.Code != http.StatusOK {
+		t.Errorf("other client: status = %d, want 200", other.Code)
 	}
 }
 

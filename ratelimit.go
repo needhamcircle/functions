@@ -71,12 +71,28 @@ func (l *rateLimiter) allow(ip string) bool {
 	return !limited
 }
 
-// clientIP: Cloud Run terminates TLS at its proxy and puts the real client
-// address first in X-Forwarded-For; fall back to the socket address for
-// local runs.
+// clientIP: Google's frontend appends the connecting client's address as the
+// final X-Forwarded-For entry, so with the function serving its run.app URL
+// directly only that final entry is trustworthy — everything before it,
+// including whole extra header lines a client sends itself, is
+// client-controlled and would let a caller pick their own rate-limit key.
+// Scan the lines back to front, skipping empty fields so a malformed
+// trailing comma cannot make "" the key, and fall back to the socket
+// address when nothing usable remains.
 func clientIP(r *http.Request) string {
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		return strings.TrimSpace(strings.Split(forwarded, ",")[0])
+	lines := r.Header.Values("X-Forwarded-For")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		for {
+			comma := strings.LastIndexByte(line, ',')
+			if ip := strings.TrimSpace(line[comma+1:]); ip != "" {
+				return ip
+			}
+			if comma < 0 {
+				break
+			}
+			line = line[:comma]
+		}
 	}
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		return host

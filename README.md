@@ -18,7 +18,12 @@ selected at deploy time with `--entry-point`.
   match the site's form inputs, return validation failures as 422 with
   `{"errors": {field: [...]}}` for the forms to render inline, carry a
   `website` honeypot field, and rate-limit to 5 requests per minute per IP —
-  per instance, which is why they deploy with `--max-instances=1`.
+  per instance, which is why they deploy with `--max-instances=1`. The
+  client IP is the final `X-Forwarded-For` entry, the one Google's frontend
+  appends, which is correct only while each function serves its run.app URL
+  directly: a load balancer or CDN in front would append its own address as
+  the final entry instead, so `clientIP` in ratelimit.go must learn about
+  the extra hop before fronting the functions with one.
 - All three answer CORS preflights and stamp CORS headers. The allowlist is
   baked in, nothing to configure: deployed (Cloud Run sets `K_SERVICE`) the
   functions accept https://needhamcircle.org (and www); running locally they
