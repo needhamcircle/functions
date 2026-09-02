@@ -63,51 +63,24 @@ go test ./...
 
 ## Deploying
 
-One-time project setup (the project must be the one whose service account the
-calendars are shared with):
-
-```
-gcloud auth login
-gcloud config set project PROJECT_ID
-gcloud services enable cloudfunctions.googleapis.com run.googleapis.com \
-  cloudbuild.googleapis.com artifactregistry.googleapis.com
-```
-
-Deploy from this repo's root — `--runtime`: pick the newest Go from
-`gcloud functions runtimes list --region=us-east1` (at least the `go` version
-declared in go.mod), and `--service-account` must be the account the
-calendars are shared with:
-
 ```
 gcloud functions deploy needham-circle-events \
-  --gen2 --runtime=go125 --region=us-east1 --source=. \
+  --gen2 --runtime=go127 --region=us-east1 --source=. \
   --entry-point=ListEvents --trigger-http --allow-unauthenticated \
   --service-account=CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
   --set-env-vars=EVENTS_CALENDAR_ID=...
 
 gcloud functions deploy needham-circle-submit \
-  --gen2 --runtime=go125 --region=us-east1 --source=. \
+  --gen2 --runtime=go127 --region=us-east1 --source=. \
   --entry-point=CreateSubmission --trigger-http --allow-unauthenticated \
   --max-instances=1 \
   --service-account=CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
   --set-env-vars=SUBMISSIONS_CALENDAR_ID=...
 
 gcloud functions deploy needham-circle-contact \
-  --gen2 --runtime=go125 --region=us-east1 --source=. \
+  --gen2 --runtime=go127 --region=us-east1 --source=. \
   --entry-point=SendContact --trigger-http --allow-unauthenticated \
   --max-instances=1 \
   --service-account=CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
   --set-secrets=SMTP_PASSWORD=needham-circle-smtp:latest
 ```
-
-The SMTP app password should live in Secret Manager rather than a plain env
-var, and the runtime service account must be able to read it:
-
-```
-printf '%s' 'the-app-password' | gcloud secrets create needham-circle-smtp --data-file=-
-gcloud secrets add-iam-policy-binding needham-circle-smtp \
-  --member=serviceAccount:CALENDAR_SA@PROJECT_ID.iam.gserviceaccount.com \
-  --role=roles/secretmanager.secretAccessor
-``` After deploying, put the three function URLs into the main
-repo's `_config.yml`. All three scale to zero between requests; at this
-site's traffic they stay inside the free tier.
