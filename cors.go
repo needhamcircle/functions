@@ -10,6 +10,9 @@ import (
 var productionOrigins = []string{
 	"https://needhamcircle.org",
 	"https://www.needhamcircle.org",
+	// The GitHub Pages mirror of the site, so the deployed functions can be
+	// exercised from it before changes reach the custom domain.
+	"https://needhamcircle.github.io",
 }
 
 var localOrigins = []string{

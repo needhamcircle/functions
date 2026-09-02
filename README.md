@@ -26,8 +26,11 @@ selected at deploy time with `--entry-point`.
   the extra hop before fronting the functions with one.
 - All three answer CORS preflights and stamp CORS headers. The allowlist is
   baked in, nothing to configure: deployed (Cloud Run sets `K_SERVICE`) the
-  functions accept https://needhamcircle.org (and www); running locally they
-  accept the local Jekyll site (localhost:4000).
+  functions accept https://needhamcircle.org (and www) plus
+  https://needhamcircle.github.io, the GitHub Pages mirror, so the site can
+  be tested there before it reaches the custom domain; running locally they
+  accept the local Jekyll site (localhost:4000). Browsers on any other
+  origin can't call them.
 - `SendContact` also honors `SMTP_ACCOUNT` (default `needhamcircle@gmail.com`).
 
 ## Layout
