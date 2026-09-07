@@ -1,10 +1,10 @@
 module github.com/needhamcircle/functions
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.2
-	google.golang.org/api v0.296.0
+	google.golang.org/api v0.297.0
 )
 
 require (
